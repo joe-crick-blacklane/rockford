@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-const glob = require('glob-fs')({gitignore: true})
+const glob = require('glob-all')
 const fs = require('fs')
 const esprima = require('esprima')
 const estraverse = require('estraverse')
@@ -18,10 +18,8 @@ const overallCoverage = {
  * based on simple-assertion
  */
 function rockford () {
-  const config = getConfig()
-  glob.readdirStream(config.glob, {})
-    .on('data', (file) => recordFileCoverage(file))
-    .on('end', () => calculateTotalCoverage())
+  glob.sync([getConfig().glob]).forEach(file => recordFileCoverage(file))
+  calculateTotalCoverage()
 }
 
 /**
@@ -53,7 +51,7 @@ function writeProgress () {
  * @param file
  */
 function recordFileCoverage (file) {
-  const ast = parseJsFile(getJsFiles(file.path))
+  const ast = parseJsFile(getJsFiles(file))
   const baseAssertionCount = overallCoverage.dbcAssertions
   const baseFunctionCount = overallCoverage.functionCount
   estraverse.traverse(ast, {
@@ -64,7 +62,7 @@ function recordFileCoverage (file) {
     }
   })
   const fileCoverage = calculateFileCoverage(baseAssertionCount, baseFunctionCount, overallCoverage)
-  overallCoverage.reportData.push([file.relative, fileCoverage, fileCoverage > .8 ? 'Sane'.rainbow : 'Needs Help!'.yellow])
+  overallCoverage.reportData.push([file, fileCoverage, fileCoverage > .8 ? 'Sane'.rainbow : 'Needs Help!'.yellow])
 }
 
 function calculateCoverageDelta (overallCount, baseCount) {
@@ -79,7 +77,7 @@ function calculateCoverageDelta (overallCount, baseCount) {
 function calculateFileCoverage(baseDbcAssertions, baseFunctionCount, overallCoverage) {
   const assertions = calculateCoverageDelta(overallCoverage.dbcAssertions, baseDbcAssertions)
   const functions = calculateCoverageDelta(overallCoverage.functionCount, baseFunctionCount)
-  return (assertions /2) / functions
+  return functions > 0 ? (assertions /2) / functions : 0
 }
 
 /**
@@ -103,7 +101,7 @@ function calculateTotalCoverage () {
  * @param node
  */
 function recordDbcAssertions (node) {
-  if (node.type === 'ExpressionStatement') {
+  if (node.type === 'ExpressionStatement' && node.expression) {
     let calleeName = node.expression.callee.name
     if (calleeName === 'pre' || calleeName === 'post') {
       overallCoverage.dbcAssertions++

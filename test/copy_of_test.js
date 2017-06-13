@@ -5,6 +5,11 @@ function test4(blah) {
   return blop;
 }
 
+const blah = function() {
+  pre()
+  post()
+}
+
 function test3(blah) {
   pre(typeof blah === 'number');
   const blop = blah + 1;
