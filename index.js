@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 const glob = require('glob-fs')({gitignore: true})
 const fs = require('fs')
 const esprima = require('esprima')
@@ -18,10 +20,9 @@ const overallCoverage = {
 function rockford () {
   // read the config file for options
   const config = getConfig()
-
   glob.readdirStream(config.glob, {})
     .on('data', (file) => recordFileCoverage(file))
-    .on('end', () => calculateCoverage())
+    .on('end', () => calculateTotalCoverage())
 }
 
 /**
@@ -56,28 +57,31 @@ function recordFileCoverage (file) {
       recordDbcAssertions(node)
     }
   })
-  const fileCoverage = getFileCoverage(baseAssertionCount, baseFunctionCount, overallCoverage)
-  overallCoverage.reportData.push([file.relative, fileCoverage, fileCoverage > .8 ? 'Sane' : 'Needs Help!'])
+  const fileCoverage = calculateFileCoverage(baseAssertionCount, baseFunctionCount, overallCoverage)
+  overallCoverage.reportData.push([file.relative, fileCoverage, fileCoverage > .8 ? 'Sane'.rainbow : 'Needs Help!'.yellow])
 }
 
+function calculateCoverageDelta (overallCount, baseCount) {
+  return Math.abs(overallCount - baseCount)
+}
 /**
  * Calculates the coverage for an individual file
  * @param baseDbcAssertions
  * @param baseFunctionCount
  * @param overallCoverage
  */
-function getFileCoverage(baseDbcAssertions, baseFunctionCount, overallCoverage) {
-  const assertions = Math.abs(overallCoverage.dbcAssertions - baseDbcAssertions)
-  const functions = Math.abs(overallCoverage.functionCount - baseFunctionCount)
+function calculateFileCoverage(baseDbcAssertions, baseFunctionCount, overallCoverage) {
+  const assertions = calculateCoverageDelta(overallCoverage.dbcAssertions, baseDbcAssertions)
+  const functions = calculateCoverageDelta(overallCoverage.functionCount, baseFunctionCount)
   return (assertions /2) / functions
 }
 
 /**
  * Calculates the code coverage
  */
-function calculateCoverage () {
+function calculateTotalCoverage () {
   const totalCoverage = (overallCoverage.dbcAssertions / 2) / overallCoverage.functionCount
-  overallCoverage.reportData.push(['Total', totalCoverage, totalCoverage > .8 ? 'Sane' : 'Needs Help!'])
+  overallCoverage.reportData.push(['Total'.yellow, totalCoverage.toString().yellow, (totalCoverage > .8 ? 'Sane'.rainbow : 'Needs Help!').yellow])
   reporter(overallCoverage.reportData)
 }
 
