@@ -1,11 +1,10 @@
 #!/usr/bin/env node
 
 const glob = require('glob-all')
-const fs = require('fs')
-const esprima = require('esprima')
-const estraverse = require('estraverse')
-const defaultConfig = require('./default-config')
-const reporter = require('./reporter')
+const writeReport = require('./lib/report-writer')
+const getConfig = require('./lib/config-reader')
+const sanityState = require('./lib/sanity-state')
+const getFileCoverage = require('./lib/file-coverage-calc')
 
 const overallCoverage = {
   functionCount: 0,
@@ -18,127 +17,39 @@ const overallCoverage = {
  * based on simple-assertion
  */
 function rockford () {
-  glob.sync([getConfig().glob]).forEach(file => recordFileCoverage(file))
-  calculateTotalCoverage()
+  glob.sync([getConfig().glob]).forEach(recordFileCoverage)
+  recordTotalCoverage(overallCoverage)
+  writeReport(overallCoverage)
 }
 
 /**
- * Sets Rockford's configuration
+ * Records file coverage for a given file
+ * @param file
  */
-function getConfig () {
-  return getConfigFromArgs() || defaultConfig
+function recordFileCoverage (file) {
+  writeProgress()
+  const fileCoverage = getFileCoverage(file, overallCoverage)
+  overallCoverage.reportData.push([file, fileCoverage.coverage, fileCoverage.functions, sanityState(fileCoverage.coverage)])
 }
 
 /**
- * Gets the name of a config file from the command line args
- * @returns {*|null}
+ * Calculates the code coverage
+ * @param overallCoverage
  */
-function getConfigFromArgs () {
-  const configFileName = process.argv[2] || '.rockford-file'
-  const configFile = fs.readFileSync(configFileName, 'utf8')
-  return configFileName ? JSON.parse(configFile) : null
+function recordTotalCoverage (overallCoverage) {
+  const totalCoverage = (overallCoverage.dbcAssertions / 2) / overallCoverage.functionCount
+  overallCoverage.reportData.push(['Total'.yellow, totalCoverage.toString().yellow, overallCoverage.functionCount, sanityState(totalCoverage)])
 }
 
 /**
  * Writes out an indicator as files are processed
  */
 function writeProgress () {
-  process.stdout.write(".")
-}
-
-/**
- * Records DbC coverage for a file
- * @param file
- */
-function recordFileCoverage (file) {
-  const ast = parseJsFile(getJsFiles(file))
-  const baseAssertionCount = overallCoverage.dbcAssertions
-  const baseFunctionCount = overallCoverage.functionCount
-  estraverse.traverse(ast, {
-    enter: function (node) {
-      writeProgress()
-      recordFunctions(node)
-      recordDbcAssertions(node)
-    }
-  })
-  const fileCoverage = calculateFileCoverage(baseAssertionCount, baseFunctionCount, overallCoverage)
-  overallCoverage.reportData.push([file, fileCoverage, fileCoverage > .8 ? 'Sane'.rainbow : 'Needs Help!'.yellow])
-}
-
-function calculateCoverageDelta (overallCount, baseCount) {
-  return Math.abs(overallCount - baseCount)
-}
-/**
- * Calculates the coverage for an individual file
- * @param baseDbcAssertions
- * @param baseFunctionCount
- * @param overallCoverage
- */
-function calculateFileCoverage(baseDbcAssertions, baseFunctionCount, overallCoverage) {
-  const assertions = calculateCoverageDelta(overallCoverage.dbcAssertions, baseDbcAssertions)
-  const functions = calculateCoverageDelta(overallCoverage.functionCount, baseFunctionCount)
-  return functions > 0 ? (assertions /2) / functions : 0
-}
-
-/**
- * Writes the report header
- */
-function writeReportHeader () {
-  process.stdout.write("\n\n")
-}
-/**
- * Calculates the code coverage
- */
-function calculateTotalCoverage () {
-  const totalCoverage = (overallCoverage.dbcAssertions / 2) / overallCoverage.functionCount
-  overallCoverage.reportData.push(['Total'.yellow, totalCoverage.toString().yellow, (totalCoverage > .8 ? 'Sane'.rainbow : 'Needs Help!').yellow])
-  writeReportHeader()
-  reporter(overallCoverage.reportData)
-}
-
-/**
- * Records the number of DbC assertions in the set of files
- * @param node
- */
-function recordDbcAssertions (node) {
-  if (node.type === 'ExpressionStatement' && node.expression) {
-    let calleeName = node.expression.callee.name
-    if (calleeName === 'pre' || calleeName === 'post') {
-      overallCoverage.dbcAssertions++
-    }
-  }
-}
-
-/**
- * Records the number of functions in the set of files
- * @param node
- */
-function recordFunctions (node) {
-  if (node.type === 'FunctionDeclaration') {
-    overallCoverage.functionCount++
-  }
-}
-
-/**
- * Gets a file and returns its string representation
- * @param filename
- * @return {*}
- */
-function getJsFiles (filename) {
-  return fs.readFileSync(filename, 'utf8')
-}
-
-/**
- * Parses the file into an AST string
- * @param file
- * @return {*}
- */
-function parseJsFile (file) {
-  return esprima.parse(file)
+  process.stdout.write('.')
 }
 
 module.exports = rockford
 
-if(require.main === module) {
+if (require.main === module) {
   rockford()
 }
