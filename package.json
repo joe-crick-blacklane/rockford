@@ -4,10 +4,7 @@
   "description": "",
   "main": "index.js",
   "bin": {
-    "rockford": "./index.js"
-  }
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "rockford": "./rockford.js"
   },
   "keywords": [],
   "author": "",
@@ -17,6 +14,7 @@
     "cliff": "^0.1.10",
     "esprima": "^4.0.0",
     "estraverse": "^4.2.0",
-    "glob-fs": "^0.1.6"
+    "glob-fs": "^0.1.6",
+    "progress": "^2.0.0"
   }
 }

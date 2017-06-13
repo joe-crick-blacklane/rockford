@@ -18,7 +18,6 @@ const overallCoverage = {
  * based on simple-assertion
  */
 function rockford () {
-  // read the config file for options
   const config = getConfig()
   glob.readdirStream(config.glob, {})
     .on('data', (file) => recordFileCoverage(file))
@@ -43,16 +42,23 @@ function getConfigFromArgs () {
 }
 
 /**
+ * Writes out an indicator as files are processed
+ */
+function writeProgress () {
+  process.stdout.write(".")
+}
+
+/**
  * Records DbC coverage for a file
  * @param file
  */
 function recordFileCoverage (file) {
-  console.log('Processing', file.relative)
   const ast = parseJsFile(getJsFiles(file.path))
   const baseAssertionCount = overallCoverage.dbcAssertions
   const baseFunctionCount = overallCoverage.functionCount
   estraverse.traverse(ast, {
     enter: function (node) {
+      writeProgress()
       recordFunctions(node)
       recordDbcAssertions(node)
     }
@@ -77,11 +83,18 @@ function calculateFileCoverage(baseDbcAssertions, baseFunctionCount, overallCove
 }
 
 /**
+ * Writes the report header
+ */
+function writeReportHeader () {
+  process.stdout.write("\n\n")
+}
+/**
  * Calculates the code coverage
  */
 function calculateTotalCoverage () {
   const totalCoverage = (overallCoverage.dbcAssertions / 2) / overallCoverage.functionCount
   overallCoverage.reportData.push(['Total'.yellow, totalCoverage.toString().yellow, (totalCoverage > .8 ? 'Sane'.rainbow : 'Needs Help!').yellow])
+  writeReportHeader()
   reporter(overallCoverage.reportData)
 }
 
@@ -126,4 +139,8 @@ function parseJsFile (file) {
   return esprima.parse(file)
 }
 
-rockford()
+module.exports = rockford
+
+if(require.main === module) {
+  rockford()
+}
