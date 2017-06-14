@@ -4,48 +4,69 @@ const glob = require('glob-all')
 const writeReport = require('./lib/report-writer')
 const getConfig = require('./lib/config-reader')
 const sanityStateFormatter = require('./lib/sanity-state')
-const fileCoverageCalculator = require('./lib/file-coverage-calc')
+const calculateFileCoverage = require('./lib/file-coverage-calc')
 const formatDisplay = require('./lib/display-formatter')
 const config = getConfig()
 const compose = require('ramda/src/compose')
-
 const sanityState = sanityStateFormatter(config.sanityLevel)
-const overallCoverage = {
-  functionCount: 0,
-  dbcAssertions: 0,
-  reportData: []
-}
-const getFileCoverage = fileCoverageCalculator(overallCoverage)
-const recordFileCoverage = compose(appendFileCoverageMetrics, getFileCoverage)
+const calculateCoverageMetrics = compose(writeReport, recordCoverageTotals, formatCoverageMetrics, analyzeCoverageMetrics)
 
 /**
  * Rockford - Runs a code analysis on a set of JS files to determine the DbC code coverage
  * based on simple-assertion
  */
 function rockford () {
-  glob.sync([config.glob]).forEach(file => {
-    writeProgress()
-    recordFileCoverage(file)
-  })
-  recordTotalCoverage(overallCoverage)
-  writeReport(overallCoverage)
+  calculateCoverageMetrics()
 }
 
 /**
- * Records file coverage for a given file
- * @param metrics
+ * Records coverage totals
+ * @notes CHANGES STATE
+ * @param coverageData
  */
-function appendFileCoverageMetrics (metrics) {
-  overallCoverage.reportData.push([metrics.file, formatDisplay(metrics.coverage), metrics.functions, sanityState(metrics.coverage)])
+function recordCoverageTotals (coverageData) {
+  const totalPercent = calculateTotalCoverage(coverageData.overallCoverage)
+  coverageData.reportData.push(['Total'.yellow, formatDisplay(totalPercent).yellow, coverageData.overallCoverage.functionCount, sanityState(totalPercent)])
+  return coverageData
 }
 
 /**
- * Calculates the code coverage
- * @param overallCoverage
+ * Analyzes every file, and returns a collection of coverage metrics
+ * @returns {*}
  */
-function recordTotalCoverage (overallCoverage) {
-  const totalCoverage = ((overallCoverage.dbcAssertions / 2) / overallCoverage.functionCount)
-  overallCoverage.reportData.push(['Total'.yellow, formatDisplay(totalCoverage).yellow, overallCoverage.functionCount, sanityState(totalCoverage)])
+function analyzeCoverageMetrics () {
+  const overallCoverage = {
+    functionCount: 0,
+    dbcAssertions: 0
+  }
+  return filesUnderAnalysis().reduce(calculateFileCoverage(overallCoverage), {metrics: []})
+}
+
+/**
+ * Formats the coverage metrics for display
+ * @param coverageData
+ * @notes CHANGES STATE
+ * @returns {Array}
+ */
+function formatCoverageMetrics (coverageData) {
+  coverageData.reportData = coverageData.metrics.map(metric => [metric.file, formatDisplay(metric.coverage), metric.functions, sanityState(metric.coverage)])
+  return coverageData
+}
+
+/**
+ * Returns a collection of the files under analysis
+ * @returns {*}
+ */
+function filesUnderAnalysis () {
+  return glob.sync([config.glob])
+}
+
+/**
+ * Calculates the total coverage for all files analyzed
+ * @returns {number}
+ */
+function calculateTotalCoverage(coverageTotals) {
+  return ((coverageTotals.dbcAssertions / 2) / coverageTotals.functionCount)
 }
 
 /**
