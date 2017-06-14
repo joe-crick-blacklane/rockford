@@ -10,6 +10,11 @@ const blah = function() {
   post()
 }
 
+const test = tester => {
+  pre()
+  post()
+}
+
 function test3(blah) {
   pre(typeof blah === 'number');
   const blop = blah + 1;

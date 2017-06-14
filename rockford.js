@@ -5,6 +5,7 @@ const writeReport = require('./lib/report-writer')
 const getConfig = require('./lib/config-reader')
 const sanityState = require('./lib/sanity-state')
 const getFileCoverage = require('./lib/file-coverage-calc')
+const formatDisplay = require('./lib/display-formatter')
 
 const overallCoverage = {
   functionCount: 0,
@@ -22,6 +23,8 @@ function rockford () {
   writeReport(overallCoverage)
 }
 
+// TODO: Return percentages, rather than decimals - round to three places
+
 /**
  * Records file coverage for a given file
  * @param file
@@ -29,7 +32,7 @@ function rockford () {
 function recordFileCoverage (file) {
   writeProgress()
   const fileCoverage = getFileCoverage(file, overallCoverage)
-  overallCoverage.reportData.push([file, fileCoverage.coverage, fileCoverage.functions, sanityState(fileCoverage.coverage)])
+  overallCoverage.reportData.push([file, formatDisplay(fileCoverage.coverage), fileCoverage.functions, sanityState(fileCoverage.coverage)])
 }
 
 /**
@@ -37,8 +40,8 @@ function recordFileCoverage (file) {
  * @param overallCoverage
  */
 function recordTotalCoverage (overallCoverage) {
-  const totalCoverage = (overallCoverage.dbcAssertions / 2) / overallCoverage.functionCount
-  overallCoverage.reportData.push(['Total'.yellow, totalCoverage.toString().yellow, overallCoverage.functionCount, sanityState(totalCoverage)])
+  const totalCoverage = ((overallCoverage.dbcAssertions / 2) / overallCoverage.functionCount)
+  overallCoverage.reportData.push(['Total'.yellow, formatDisplay(totalCoverage).yellow, overallCoverage.functionCount, sanityState(totalCoverage)])
 }
 
 /**
