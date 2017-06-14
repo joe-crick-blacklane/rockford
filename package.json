@@ -17,6 +17,7 @@
     "esprima": "^4.0.0",
     "estraverse": "^4.2.0",
     "glob-fs": "^0.1.6",
-    "progress": "^2.0.0"
+    "progress": "^2.0.0",
+    "ramda": "^0.24.1"
   }
 }
