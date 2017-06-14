@@ -9,7 +9,7 @@ const formatDisplay = require('./lib/display-formatter')
 const config = getConfig()
 const compose = require('ramda/src/compose')
 const sanityState = sanityStateFormatter(config.sanityLevel)
-const calculateCoverageMetrics = compose(writeReport, recordCoverageTotals, formatCoverageMetrics, analyzeCoverageMetrics)
+const calculateCoverageMetrics = compose(writeReport, recordCoverageTotals, calculateTotalCoverage, formatCoverageMetrics, analyzeCoverageMetrics)
 
 /**
  * Rockford - Runs a code analysis on a set of JS files to determine the DbC code coverage
@@ -17,17 +17,6 @@ const calculateCoverageMetrics = compose(writeReport, recordCoverageTotals, form
  */
 function rockford () {
   calculateCoverageMetrics()
-}
-
-/**
- * Records coverage totals
- * @notes CHANGES STATE
- * @param coverageData
- */
-function recordCoverageTotals (coverageData) {
-  const totalPercent = calculateTotalCoverage(coverageData.overallCoverage)
-  coverageData.reportData.push(['Total'.yellow, formatDisplay(totalPercent).yellow, coverageData.overallCoverage.functionCount, sanityState(totalPercent)])
-  return coverageData
 }
 
 /**
@@ -54,19 +43,32 @@ function formatCoverageMetrics (coverageData) {
 }
 
 /**
- * Returns a collection of the files under analysis
- * @returns {*}
+ * Records coverage totals
+ * @notes CHANGES STATE
+ * @param coverageData
  */
-function filesUnderAnalysis () {
-  return glob.sync([config.glob])
+function recordCoverageTotals (coverageData) {
+  const totalPercent = coverageData.totalPercent
+  coverageData.reportData.push(['Total'.yellow, formatDisplay(totalPercent).yellow, coverageData.overallCoverage.functionCount, sanityState(totalPercent)])
+  return coverageData
 }
 
 /**
  * Calculates the total coverage for all files analyzed
  * @returns {number}
  */
-function calculateTotalCoverage(coverageTotals) {
-  return ((coverageTotals.dbcAssertions / 2) / coverageTotals.functionCount)
+function calculateTotalCoverage(coverageData) {
+  const coverageTotals = coverageData.overallCoverage
+  coverageData.totalPercent = ((coverageTotals.dbcAssertions / 2) / coverageTotals.functionCount)
+  return coverageData
+}
+
+/**
+ * Returns a collection of the files under analysis
+ * @returns {*}
+ */
+function filesUnderAnalysis () {
+  return glob.sync([config.glob])
 }
 
 /**
