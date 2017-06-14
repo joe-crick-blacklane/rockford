@@ -1,3 +1,4 @@
 {
- "glob": "test/*.js"
+ "glob": "test/*.js",
+ "sanityLevel": 0.8
 }

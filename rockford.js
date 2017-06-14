@@ -3,9 +3,11 @@
 const glob = require('glob-all')
 const writeReport = require('./lib/report-writer')
 const getConfig = require('./lib/config-reader')
-const sanityState = require('./lib/sanity-state')
+const sanityStateFormatter = require('./lib/sanity-state')
 const getFileCoverage = require('./lib/file-coverage-calc')
 const formatDisplay = require('./lib/display-formatter')
+const config = getConfig()
+const sanityState = sanityStateFormatter(config.sanityLevel)
 
 const overallCoverage = {
   functionCount: 0,
@@ -18,19 +20,19 @@ const overallCoverage = {
  * based on simple-assertion
  */
 function rockford () {
-  glob.sync([getConfig().glob]).forEach(recordFileCoverage)
+  glob.sync([config.glob]).forEach(file => {
+    writeProgress()
+    recordFileCoverage(file)
+  })
   recordTotalCoverage(overallCoverage)
   writeReport(overallCoverage)
 }
-
-// TODO: Return percentages, rather than decimals - round to three places
 
 /**
  * Records file coverage for a given file
  * @param file
  */
 function recordFileCoverage (file) {
-  writeProgress()
   const fileCoverage = getFileCoverage(file, overallCoverage)
   overallCoverage.reportData.push([file, formatDisplay(fileCoverage.coverage), fileCoverage.functions, sanityState(fileCoverage.coverage)])
 }
