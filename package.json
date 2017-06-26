@@ -9,14 +9,12 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "devDependencies": {
-    "glob-all": "^3.1.0"
-  },
   "dependencies": {
     "cliff": "^0.1.10",
     "esprima": "^4.0.0",
     "estraverse": "^4.2.0",
     "giftbox": "^0.5.1",
+    "glob-all": "^3.1.0",
     "glob-fs": "^0.1.6",
     "progress": "^2.0.0",
     "ramda": "^0.24.1"
